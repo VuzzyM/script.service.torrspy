@@ -225,8 +225,33 @@ def get_info() -> Optional[Tuple[VideoInfo, Art]]:
         log("TorrSpy: update_listitem")
 
         if video_info:
+            uniqueids = video_info.get('uniqueid') or {}
+
             make_valid_video_info(video_info)
             item.setInfo('video', video_info) # type: ignore
+
+            log("TorrSpy: setInfo mediatype=%s" % video_info.get('mediatype'))
+
+            if uniqueids:
+                ids = {
+                    key: str(value)
+                    for key, value in uniqueids.items()
+                    if value and str(value) != 'None'
+                }
+
+                log("TorrSpy: ids=%s" % ids)
+
+                if ids:
+                    if video_info.get('mediatype') == 'episode':
+                        item.setProperty(
+                            'script.simkl.ids',
+                            json.dumps(ids)
+                        )
+                        if ids.get('tvdb'):
+                            ids['tvdbshow'] = ids['tvdb']
+
+                    log("TorrSpy: setUniqueIDs=%s" % ids)
+                    item.setUniqueIDs(ids) # type: ignore
 
             title = video_info.get('title')
             if title:
