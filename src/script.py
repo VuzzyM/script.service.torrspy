@@ -177,7 +177,9 @@ def make_valid_video_info(video_info: VideoInfo):
 
 def get_info() -> Optional[Tuple[VideoInfo, Art]]:
     from torrserve_stream.engine import Engine
-    from vdlib.torrspy.detect import detect_tvshow, extract_filename, update_video_info_from_tmdb
+    from vdlib.torrspy.detect import (
+        detect_tvshow, extract_filename, extract_season_episode, update_video_info_from_tmdb,
+    )
     log('---TorrSpy: get_info---')
     import xbmc, xbmcgui
 
@@ -211,8 +213,13 @@ def get_info() -> Optional[Tuple[VideoInfo, Art]]:
     if not video_info:
         video_info = detect_video_info_from_title(engine.title)
 
+    filename = extract_filename(url)
     if not video_info:
-        video_info = detect_video_info_from_filename(extract_filename(url))
+        video_info = detect_video_info_from_filename(filename)
+
+    season, episode = extract_season_episode(filename or "")
+    if season is not None and episode is not None:
+        video_info.update(mediatype="episode", season=season, episode=episode)
 
     def update_listitem(video_info: VideoInfo, art: Art):
         log("TorrSpy: update_listitem")
@@ -235,9 +242,11 @@ def get_info() -> Optional[Tuple[VideoInfo, Art]]:
     update_listitem(video_info, art)
 
     if 'imdbnumber' not in video_info or 'director' not in video_info:
-        isTVShow = None
-        if engine.title:
-            isTVShow = detect_tvshow(engine.title)
+        isTVShow = (
+            video_info.get("mediatype") in ("tv", "tvshow", "season", "episode")
+            or detect_tvshow(engine.title or "")
+            or None
+        )
 
         update_video_info_from_tmdb(video_info, art, url=url, isTVshow=isTVShow)
         update_listitem(video_info, art)
